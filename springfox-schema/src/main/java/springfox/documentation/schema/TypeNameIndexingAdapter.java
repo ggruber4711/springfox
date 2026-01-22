@@ -44,21 +44,18 @@ public class TypeNameIndexingAdapter implements UniqueTypeNameAdapter {
     return Optional.ofNullable(knownNames.get(typeId));
   }
 
-  private boolean checkTypeRegistration(
-      String typeName,
-      String typeId) {
-    if (knownNames.containsKey(typeId)) {
-      if (!knownNames.get(typeId).equals(typeName)) {
-        LOGGER.debug("Rewriting type {} with model id: {} is not allowed, because it is already registered",
-                 typeName,
-                 typeId);
-        throw new IllegalStateException("Model already registered with different name.");
-      } else {
-        return true;
-      }
+  private boolean checkTypeRegistration(String typeName, String modelId) {
+    if (!knownNames.containsKey(modelId)) {
+      return false;
     }
-
-    return false;
+    String existingName = knownNames.get(modelId);
+    if (!existingName.equals(typeName)) {
+      LOGGER.warn(
+          "Rewriting type {} with model id: {} is not allowed, because it is already registered",
+          typeName,
+          modelId);
+    }
+    return true;
   }
 
   @Override

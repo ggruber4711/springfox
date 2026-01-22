@@ -1,3 +1,12 @@
+pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    mavenCentral()
+    maven { url 'https://jcenter.bintray.com' }
+    maven { url 'https://repo.jfrog.org/artifactory/libs-release' }
+  }
+}
+
 rootProject.name = 'springfox'
 include 'springfox-core'
 include 'springfox-spi'

@@ -26,11 +26,21 @@ ext {
   shouldSyncWithMavenCentral = project.hasProperty('ossSync') ?
       project.property('ossSync') :
       System.getenv('SONATYPE_SYNC')
+  nexusUrl = project.hasProperty('nexusUrl') ?
+      project.property('nexusUrl') :
+      (System.getenv('NEXUS_URL') ?: 'https://nexus.workflow.at')
+  nexusRepo = project.hasProperty('nexusRepo') ?
+      project.property('nexusRepo') :
+      (System.getenv('NEXUS_REPO') ?: 'thirdparty')
+  nexusUser = project.hasProperty('nexusUser') ?
+      project.property('nexusUser') :
+      System.getenv('NEXUS_USERNAME')
+  nexusPassword = project.hasProperty('nexusPassword') ?
+      project.property('nexusPassword') :
+      System.getenv('NEXUS_PASSWORD')
 }
 
 apply plugin: 'maven-publish'
-apply plugin: 'com.jfrog.bintray'
-apply plugin: "com.jfrog.artifactory"
 
 jar {
   manifest {
@@ -76,6 +86,18 @@ javadoc {
 }
 
 publishing {
+  repositories {
+    maven {
+      name = "nexusWorkflow"
+      url = uri("${project.nexusUrl}/repository/${project.nexusRepo}")
+      if (project.nexusUser && project.nexusPassword) {
+        credentials {
+          username = project.nexusUser
+          password = project.nexusPassword
+        }
+      }
+    }
+  }
   publications {
     mavenJava(MavenPublication) {
       from components.java
@@ -131,59 +153,62 @@ publishing {
 }
 
 
-artifactory {
-  contextUrl = 'https://oss.jfrog.org'
-  resolve {
-    repository {
-      repoKey = 'libs-release'
-      maven = true
-    }
-  }
-  publish {
-    repository {
-      repoKey = 'oss-snapshot-local' //The Artifactory repository key to publish to
-      //when using oss.jfrog.org the credentials are from Bintray. For local build we expect them to be found in
-      //~/.gradle/gradle.properties, otherwise to be set in the build server
-      username = project.bintrayUser
-      password = project.bintrayApiKey
-    }
-    defaults {
-      publications('mavenJava')
-    }
-  }
-}
-
-bintray {
-  user = project.bintrayUser
-  key = project.bintrayApiKey
-  dryRun = MultiProjectReleasePlugin.dryRun(project) //Whether to run this as dry-run, without deploying
-  publish = true //If version should be auto published after an upload
-  publications = ['mavenJava']
-  pkg {
-    repo = 'maven-repo'
-    name = "springfox"
-    userOrg = "springfox"
-    websiteUrl = "${project.projectUrl}"
-    issueTrackerUrl = "${project.projectUrl}/issues"
-    vcsUrl = "${project.projectUrl}.git"
-    desc = project.description
-    licenses = ['Apache-2.0']
-    labels = ['spring', 'swagger', 'apis', 'oas', 'openapi', 'springfox']
-    publicDownloadNumbers = true
-    version {
-      vcsTag = project.version
-      gpg {
-        sign = true //Determines whether to GPG sign the files. The default is false
-        //Optional. The passphrase for GPG signing'
-        passphrase = project.passphrase
+if (project.plugins.hasPlugin("com.jfrog.artifactory")) {
+  artifactory {
+    contextUrl = 'https://oss.jfrog.org'
+    resolve {
+      repository {
+        repoKey = 'libs-release'
+        maven = true
       }
-      mavenCentralSync {
-        sync = ("true" == project.shouldSyncWithMavenCentral)
-        user = project.sonatypeUser
-        password = project.sonatypePassword
-        close = '1'
+    }
+    publish {
+      repository {
+        repoKey = 'oss-snapshot-local' //The Artifactory repository key to publish to
+        //when using oss.jfrog.org the credentials are from Bintray. For local build we expect them to be found in
+        //~/.gradle/gradle.properties, otherwise to be set in the build server
+        username = project.bintrayUser
+        password = project.bintrayApiKey
+      }
+      defaults {
+        publications('mavenJava')
       }
     }
   }
 }
 
+if (project.plugins.hasPlugin("com.jfrog.bintray")) {
+  bintray {
+    user = project.bintrayUser
+    key = project.bintrayApiKey
+    dryRun = MultiProjectReleasePlugin.dryRun(project) //Whether to run this as dry-run, without deploying
+    publish = true //If version should be auto published after an upload
+    publications = ['mavenJava']
+    pkg {
+      repo = 'maven-repo'
+      name = "springfox"
+      userOrg = "springfox"
+      websiteUrl = "${project.projectUrl}"
+      issueTrackerUrl = "${project.projectUrl}/issues"
+      vcsUrl = "${project.projectUrl}.git"
+      desc = project.description
+      licenses = ['Apache-2.0']
+      labels = ['spring', 'swagger', 'apis', 'oas', 'openapi', 'springfox']
+      publicDownloadNumbers = true
+      version {
+        vcsTag = project.version
+        gpg {
+          sign = true //Determines whether to GPG sign the files. The default is false
+          //Optional. The passphrase for GPG signing'
+          passphrase = project.passphrase
+        }
+        mavenCentralSync {
+          sync = ("true" == project.shouldSyncWithMavenCentral)
+          user = project.sonatypeUser
+          password = project.sonatypePassword
+          close = '1'
+        }
+      }
+    }
+  }
+}
